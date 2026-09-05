@@ -19,7 +19,7 @@
 
 :root{
   --cask: #241019;
-  --cask-2: #341826;
+  --cask-2: rgba(52, 24, 38, 0.93);
   --cask-3: #3f1f30;
   --hairline: #5a3247;
   --parchment: #F4E9DD;
@@ -64,7 +64,7 @@ body{
   width: 240px;
   height: auto;
   stroke: var(--gold);
-  opacity: 0.2;
+  opacity: 0.3;
   transform: rotate(10deg);
 }
 .bg-grape-2{
@@ -73,7 +73,7 @@ body{
   width: 210px;
   height: auto;
   stroke: var(--rosewood);
-  opacity: 0.18;
+  opacity: 0.26;
   transform: rotate(-15deg) scaleX(-1);
 }
 
@@ -190,6 +190,7 @@ h1{
 
 .toolbar{
   display:flex;
+  justify-content: flex-end;
   gap:10px;
   margin: 28px 0 8px;
   flex-wrap: wrap;
@@ -292,6 +293,39 @@ input:focus, select:focus, textarea:focus{
   border-color: var(--gold-soft);
 }
 .form-actions{ display:flex; gap:10px; margin-top:18px; }
+
+/* ---- bottom nav (solo mobile) ---- */
+.bottom-nav{
+  display: none;
+}
+
+@media (max-width: 560px){
+  .bottom-nav{
+    display: flex;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 5;
+    background: var(--cask-2);
+    border-top: 1px solid var(--hairline);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .bottom-nav-item{
+    flex: 1;
+    display:flex;
+    flex-direction: column;
+    align-items:center;
+    gap: 3px;
+    background: none;
+    border: none;
+    border-radius: 0;
+    padding: 9px 4px 8px;
+    color: var(--ink-mute);
+  }
+  .bottom-nav-icon{ font-size: 18px; line-height: 1; }
+  .bottom-nav-label{ font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; letter-spacing: 0.02em; }
+  .bottom-nav-item:hover{ background: none; color: var(--ink-mute); }
+  .bottom-nav-item.active{ color: var(--gold); }
+}
 
 .setup-warning{
   background: rgba(180,101,122,0.12);
@@ -978,10 +1012,11 @@ input:focus, select:focus, textarea:focus{
 }
 
 @media (max-width: 560px){
-  .wrap{ padding: 32px 16px 80px; }
+  .wrap{ padding: 32px 16px 100px; }
   .sticky-top{ margin: -32px -16px 0; padding: 32px 16px 0; }
   .sticky-top .tab-row-all,
   .sticky-top .tab-row:not(.tab-row-all){ margin-left: -16px; margin-right: -16px; padding-left: 16px; padding-right: 16px; }
+  .tab-row-right{ display: none; } /* su mobile queste tre voci vivono nella barra fissa in basso */
   .field-grid{ grid-template-columns: 1fr; }
   .wine-top{ flex-direction: column; }
   .wine-side{ flex-direction:row; align-items:center; width:100%; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
@@ -1135,6 +1170,26 @@ input:focus, select:focus, textarea:focus{
 
   <p class="footnote">I dati sono sincronizzati online tra tutti i dispositivi collegati alla stessa cantina. Mauro e Francesca sono fissi; gli ospiti si aggiungono per l'occasione.</p>
 </div>
+
+<!-- Barra di navigazione fissa in basso, solo su mobile -->
+<nav id="bottom-nav" class="bottom-nav">
+  <button class="bottom-nav-item" data-tab="Tutti">
+    <span class="bottom-nav-icon">🍷</span>
+    <span class="bottom-nav-label">Cantina</span>
+  </button>
+  <button class="bottom-nav-item" data-tab="Abbinamento">
+    <span class="bottom-nav-icon">🍽</span>
+    <span class="bottom-nav-label">Abbinamento</span>
+  </button>
+  <button class="bottom-nav-item" data-tab="Inventario">
+    <span class="bottom-nav-icon">▤</span>
+    <span class="bottom-nav-label">Inventario</span>
+  </button>
+  <button class="bottom-nav-item" data-tab="Classifica">
+    <span class="bottom-nav-icon">★</span>
+    <span class="bottom-nav-label">Classifica</span>
+  </button>
+</nav>
 
 <!-- Schermata di login -->
 <div id="auth-screen" class="overlay-screen" style="display:none;">
@@ -1315,6 +1370,14 @@ let pendingScrollTo = null; // wine id to scroll to & highlight after jumping fr
 let quickPhotoTargetId = null; // wine id currently targeted by the quick photo upload (card thumbnail)
 
 function uid(){ return 'w_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
+
+// Chiude il modulo di aggiunta/modifica se e' aperto, quando l'utente
+// naviga altrove (cambio tab, salto da Classifica/Inventario/Abbinamento,
+// barra in basso) — evita che resti visibile sopra una pagina diversa.
+function closeOpenForm(){
+  const panel = document.getElementById('form-panel');
+  if(panel) panel.innerHTML = '';
+}
 
 // Qualità: media stelle di tutti i votanti, smorzata verso un valore neutro (3)
 // in proporzione al numero di voti, cosi' un singolo voto isolato pesa meno
@@ -1801,7 +1864,16 @@ function render(){
   contentEl.innerHTML = listHtml;
 
   document.querySelectorAll('.tab').forEach(el => {
-    el.addEventListener('click', () => { activeTab = el.dataset.tab; render(); });
+    el.addEventListener('click', () => { closeOpenForm(); activeTab = el.dataset.tab; render(); });
+  });
+
+  // Barra di navigazione in basso (mobile): "Cantina" e' attiva sia su
+  // "Tutti" sia su qualsiasi filtro di tipologia, le altre tre voci
+  // corrispondono 1:1 alle rispettive viste.
+  const bottomNavActiveTab = TYPES.includes(activeTab) ? 'Tutti' : activeTab;
+  document.querySelectorAll('.bottom-nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.tab === bottomNavActiveTab);
+    el.onclick = () => { closeOpenForm(); activeTab = el.dataset.tab; render(); };
   });
 
   if(activeTab === 'Classifica'){
@@ -1810,6 +1882,7 @@ function render(){
         const wineId = el.dataset.wineId;
         const wine = wines.find(w => w.id === wineId);
         if(!wine) return;
+        closeOpenForm();
         activeTab = wine.type;
         pendingScrollTo = wineId;
         render();
@@ -1824,6 +1897,7 @@ function render(){
         const wineId = el.dataset.wineId;
         const wine = wines.find(w => w.id === wineId);
         if(!wine) return;
+        closeOpenForm();
         activeTab = wine.type;
         pendingScrollTo = wineId;
         render();
@@ -1854,6 +1928,7 @@ function render(){
         const wineId = el.dataset.wine;
         const wine = wines.find(w => w.id === wineId);
         if(!wine) return;
+        closeOpenForm();
         activeTab = wine.type;
         pendingScrollTo = wineId;
         render();
