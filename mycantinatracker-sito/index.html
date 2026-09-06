@@ -321,8 +321,8 @@ input:focus, select:focus, textarea:focus{
     padding: 9px 4px 8px;
     color: var(--ink-mute);
   }
-  .bottom-nav-icon{ font-size: 18px; line-height: 1; }
-  .bottom-nav-label{ font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; letter-spacing: 0.02em; }
+  .bottom-nav-icon{ font-size: 16px; line-height: 1; }
+  .bottom-nav-label{ font-family: 'IBM Plex Mono', monospace; font-size: 8.5px; letter-spacing: 0.01em; }
   .bottom-nav-item:hover{ background: none; color: var(--ink-mute); }
   .bottom-nav-item.active{ color: var(--gold); }
 }
@@ -894,6 +894,19 @@ input:focus, select:focus, textarea:focus{
   color: var(--ink-mute);
 }
 
+/* ---- stats view chart ---- */
+.stat-chart{ width: 100%; max-width: 100%; height: auto; overflow: visible; }
+.stat-bar-value{
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  fill: var(--parchment);
+}
+.stat-bar-label{
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  fill: var(--ink-mute);
+}
+
 /* ---- pairing view (Abbinamento) ---- */
 .pairing-box{
   background: var(--cask-2);
@@ -1146,12 +1159,15 @@ input:focus, select:focus, textarea:focus{
     </header>
 
     <div class="toolbar">
+      <button id="btn-edit-reviewers" class="btn-quiet">✎ Nomi votanti</button>
       <button class="btn-primary" id="btn-open-form">+ Aggiungi bottiglia</button>
       <button id="btn-seed" style="display:none;">Aggiungi i miei 11 vini</button>
     </div>
 
     <div id="tabs-holder"></div>
   </div>
+
+  <div id="reviewer-settings-panel"></div>
 
   <div id="form-panel"></div>
 
@@ -1188,6 +1204,10 @@ input:focus, select:focus, textarea:focus{
   <button class="bottom-nav-item" data-tab="Classifica">
     <span class="bottom-nav-icon">★</span>
     <span class="bottom-nav-label">Classifica</span>
+  </button>
+  <button class="bottom-nav-item" data-tab="Statistiche">
+    <span class="bottom-nav-icon">📊</span>
+    <span class="bottom-nav-label">Statistiche</span>
   </button>
 </nav>
 
@@ -1235,10 +1255,10 @@ input:focus, select:focus, textarea:focus{
   </div>
 </div>
 
-<input type="file" id="quick-photo-input" accept="image/*" capture="environment" style="display:none;" />
+<input type="file" id="quick-photo-input" accept="image/*" style="display:none;" />
 
 <script>
-const FIXED_REVIEWERS = ['Mauro', 'Francesca'];
+let fixedReviewers = ['Votante 1', 'Votante 2']; // sovrascritti dal caricamento (loadReviewerNames)
 
 // Rileva automaticamente dove sta girando questo file:
 // - dentro un artifact di Claude.ai, window.storage esiste gia' (fornito dalla piattaforma)
@@ -1377,6 +1397,8 @@ function uid(){ return 'w_' + Date.now() + '_' + Math.random().toString(36).slic
 function closeOpenForm(){
   const panel = document.getElementById('form-panel');
   if(panel) panel.innerHTML = '';
+  const revPanel = document.getElementById('reviewer-settings-panel');
+  if(revPanel) revPanel.innerHTML = '';
 }
 
 // Qualità: media stelle di tutti i votanti, smorzata verso un valore neutro (3)
@@ -1569,6 +1591,80 @@ ${JSON.stringify(wineList)}`;
   }
 }
 
+function computeMonthlyStats(log){
+  const byMonth = {};
+  log.forEach(entry => {
+    const d = new Date(entry.date);
+    if(isNaN(d)) return;
+    const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    if(!byMonth[key]) byMonth[key] = { count: 0, spent: 0 };
+    byMonth[key].count += 1;
+    const p = parseFloat(entry.price);
+    if(!isNaN(p)) byMonth[key].spent += p;
+  });
+  const keys = Object.keys(byMonth).sort();
+  return keys.slice(-6).map(k => ({ month: k, ...byMonth[k] }));
+}
+
+function monthLabel(key){
+  const [y, m] = key.split('-');
+  const names = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+  return names[parseInt(m, 10) - 1] + ' ' + y.slice(2);
+}
+
+function renderStatsView(){
+  if(consumptionLog === null){
+    ensureConsumptionLogLoaded();
+    return `<div class="loading">Carico lo storico dei consumi…</div>`;
+  }
+
+  const stats = computeMonthlyStats(consumptionLog);
+  if(stats.length === 0){
+    return `<div class="empty"><p>Nessun consumo registrato ancora — ogni volta che tocchi "−" su una bottiglia, qui comparirà la statistica del mese.</p></div>`;
+  }
+
+  const maxCount = Math.max(...stats.map(s => s.count), 1);
+  const maxSpent = Math.max(...stats.map(s => s.spent), 1);
+  const barWidth = 36, gap = 22, chartHeight = 110;
+  const svgWidth = stats.length * (barWidth + gap);
+
+  function buildBars(valueKey, maxVal, color){
+    return stats.map((s, i) => {
+      const h = Math.max(2, Math.round((s[valueKey] / maxVal) * chartHeight));
+      const x = i * (barWidth + gap);
+      const y = chartHeight - h;
+      const valLabel = valueKey === 'spent' ? '€' + s.spent.toFixed(0) : s.count;
+      return `
+        <text x="${x + barWidth/2}" y="${y - 8}" text-anchor="middle" class="stat-bar-value">${valLabel}</text>
+        <rect x="${x}" y="${y}" width="${barWidth}" height="${h}" rx="3" fill="${color}"/>
+        <text x="${x + barWidth/2}" y="${chartHeight + 18}" text-anchor="middle" class="stat-bar-label">${monthLabel(s.month)}</text>`;
+    }).join('');
+  }
+
+  const totalBottles = stats.reduce((a, s) => a + s.count, 0);
+  const totalSpent = stats.reduce((a, s) => a + s.spent, 0);
+
+  return `
+    <div class="inv-summary">
+      <div class="inv-summary-item">
+        <span class="inv-summary-n">${totalBottles}</span>
+        <span class="inv-summary-l">bottiglie bevute (ultimi mesi)</span>
+      </div>
+      <div class="inv-summary-item">
+        <span class="inv-summary-n">€${totalSpent.toFixed(2)}</span>
+        <span class="inv-summary-l">valore consumato</span>
+      </div>
+    </div>
+    <div class="rank-section">
+      <h3 class="rank-section-title">Bottiglie bevute al mese</h3>
+      <svg viewBox="0 0 ${svgWidth} ${chartHeight + 32}" class="stat-chart">${buildBars('count', maxCount, 'var(--gold)')}</svg>
+    </div>
+    <div class="rank-section">
+      <h3 class="rank-section-title">Spesa mensile stimata</h3>
+      <svg viewBox="0 0 ${svgWidth} ${chartHeight + 32}" class="stat-chart">${buildBars('spent', maxSpent, 'var(--rosewood)')}</svg>
+    </div>`;
+}
+
 function renderInventoryView(data){
   const { groups, totalBottles, totalValue } = data;
   const typesWithResults = TYPES.filter(t => groups[t] && groups[t].length > 0);
@@ -1682,8 +1778,62 @@ async function loadWines(){
     wines = [];
     storageReady = true;
   }
+  await loadReviewerNames();
   render();
   startRealtimeSync();
+}
+
+async function loadReviewerNames(){
+  try{
+    const res = await window.storage.get('settings:reviewers', false);
+    const names = res && res.value ? JSON.parse(res.value) : null;
+    if(Array.isArray(names) && names.length === 2 && names[0] && names[1]){
+      fixedReviewers = names;
+    }
+  }catch(e){
+    // non ancora impostati: restano i placeholder di default
+  }
+}
+
+async function saveReviewerNames(names){
+  fixedReviewers = names;
+  try{
+    await window.storage.set('settings:reviewers', JSON.stringify(names), false);
+  }catch(e){
+    console.error('Salvataggio nomi votanti non riuscito', e);
+  }
+}
+
+// Registra ogni bottiglia "stappata" (non gli aumenti) per le statistiche mensili.
+let consumptionLog = null; // cache: null = non ancora caricato dallo storage
+
+async function logConsumption(wine){
+  const entry = {
+    id: uid(),
+    wineId: wine.id,
+    wineName: wine.name,
+    type: wine.type,
+    price: wine.price || '',
+    date: new Date().toISOString()
+  };
+  if(consumptionLog === null) consumptionLog = [];
+  consumptionLog.push(entry);
+  try{
+    await window.storage.set('consumption:log', JSON.stringify(consumptionLog), false);
+  }catch(e){
+    console.error('Registrazione consumo non riuscita', e);
+  }
+}
+
+async function ensureConsumptionLogLoaded(){
+  if(consumptionLog !== null) return;
+  try{
+    const res = await window.storage.get('consumption:log', false);
+    consumptionLog = res && res.value ? JSON.parse(res.value) : [];
+  }catch(e){
+    consumptionLog = [];
+  }
+  render();
 }
 
 async function saveWines(){
@@ -1818,7 +1968,7 @@ function render(){
   const inventoryData = computeInventory(wines);
   counts['Inventario'] = inventoryData.totalBottles;
 
-  const specialView = activeTab === 'Classifica' || activeTab === 'Inventario' || activeTab === 'Abbinamento';
+  const specialView = activeTab === 'Classifica' || activeTab === 'Inventario' || activeTab === 'Abbinamento' || activeTab === 'Statistiche';
   const typeTabsRow = specialView ? '' : `
     <div class="tab-row">${TYPES.map(t => `
       <button class="tab ${activeTab === t ? 'tab-active' : ''}" data-tab="${t}">
@@ -1832,6 +1982,9 @@ function render(){
         Tutti<span class="tab-count">${counts['Tutti'] || 0}</span>
       </button>
       <div class="tab-row-right">
+        <button class="tab tab-ranking ${activeTab === 'Statistiche' ? 'tab-active' : ''}" data-tab="Statistiche">
+          📊 Statistiche
+        </button>
         <button class="tab tab-ranking ${activeTab === 'Abbinamento' ? 'tab-active' : ''}" data-tab="Abbinamento">
           🍽 Abbinamento
         </button>
@@ -1852,6 +2005,8 @@ function render(){
     listHtml = renderInventoryView(inventoryData);
   } else if(activeTab === 'Abbinamento'){
     listHtml = renderPairingView();
+  } else if(activeTab === 'Statistiche'){
+    listHtml = renderStatsView();
   } else {
     const filtered = activeTab === 'Tutti' ? wines : wines.filter(w => w.type === activeTab);
     const sorted = [...filtered].sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
@@ -1913,6 +2068,7 @@ function render(){
         const delta = el.dataset.action === 'inv-dec' ? -1 : 1;
         wine.quantity = Math.max(0, current + delta);
         await saveWines();
+        if(delta === -1) await logConsumption(wine);
         render();
       });
     });
@@ -1955,7 +2111,7 @@ function renderWineCard(w){
   const priceStr = w.price ? `€${w.price}` : '—';
   const metaParts = [w.cantina, w.vitigno, w.region, w.vintage, w.gradazione ? w.gradazione + '% vol' : ''].filter(Boolean);
 
-  const reviewers = [...FIXED_REVIEWERS, ...(w.guests||[])];
+  const reviewers = [...fixedReviewers, ...(w.guests||[])];
 
   const stubs = reviewers.map(name => {
     const review = (w.reviews||{})[name];
@@ -2073,6 +2229,7 @@ function attachCardHandlers(){
       const delta = el.dataset.action === 'qty-dec' ? -1 : 1;
       wine.quantity = Math.max(0, current + delta);
       await saveWines();
+      if(delta === -1) await logConsumption(wine);
       render();
     });
   });
@@ -2120,7 +2277,7 @@ function attachCardHandlers(){
       if(!name){ input.focus(); return; }
       const wine = wines.find(w => w.id === wineId);
       wine.guests = wine.guests || [];
-      if(!wine.guests.includes(name) && !FIXED_REVIEWERS.includes(name)){
+      if(!wine.guests.includes(name) && !fixedReviewers.includes(name)){
         wine.guests.push(name);
       }
       addingGuestFor = null;
@@ -2186,7 +2343,7 @@ function attachCardHandlers(){
       const wine = wines.find(w => w.id === wineId);
       if(wine && wine.reviews){
         delete wine.reviews[reviewer];
-        if(!FIXED_REVIEWERS.includes(reviewer) && wine.guests){
+        if(!fixedReviewers.includes(reviewer) && wine.guests){
           wine.guests = wine.guests.filter(g => g !== reviewer);
         }
       }
@@ -2259,7 +2416,7 @@ function renderForm(editingWine){
               <span class="photo-preview-empty">Nessuna foto</span>
             </div>
             <div class="photo-controls">
-              <input type="file" id="f-photo" accept="image/*" capture="environment" />
+              <input type="file" id="f-photo" accept="image/*" />
               <button type="button" id="f-photo-remove" class="btn-quiet" style="display:none;">Rimuovi foto</button>
             </div>
           </div>
@@ -2458,6 +2615,40 @@ ${text}
 }
 
 document.getElementById('btn-open-form').addEventListener('click', () => renderForm());
+document.getElementById('btn-edit-reviewers').addEventListener('click', () => renderReviewerSettings());
+
+function renderReviewerSettings(){
+  const panel = document.getElementById('reviewer-settings-panel');
+  panel.innerHTML = `
+    <div class="panel">
+      <h2>Nomi dei votanti fissi</h2>
+      <p class="overlay-text">Questi due nomi compaiono sempre come schede di valutazione su ogni vino di questa cantina (oltre agli ospiti aggiunti di volta in volta).</p>
+      <div class="field-grid">
+        <div>
+          <label for="rev-name-1">Primo votante</label>
+          <input type="text" id="rev-name-1" value="${escapeHtml(fixedReviewers[0])}" placeholder="Es. Mauro" />
+        </div>
+        <div>
+          <label for="rev-name-2">Secondo votante</label>
+          <input type="text" id="rev-name-2" value="${escapeHtml(fixedReviewers[1])}" placeholder="Es. Francesca" />
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-primary" id="rev-save-btn">Salva nomi</button>
+        <button id="rev-cancel-btn">Annulla</button>
+      </div>
+    </div>`;
+
+  document.getElementById('rev-save-btn').addEventListener('click', async () => {
+    const n1 = document.getElementById('rev-name-1').value.trim();
+    const n2 = document.getElementById('rev-name-2').value.trim();
+    if(!n1 || !n2){ return; }
+    await saveReviewerNames([n1, n2]);
+    panel.innerHTML = '';
+    render();
+  });
+  document.getElementById('rev-cancel-btn').addEventListener('click', () => { panel.innerHTML = ''; });
+}
 
 document.getElementById('btn-seed').addEventListener('click', async () => {
   const now = Date.now();
