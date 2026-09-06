@@ -137,16 +137,6 @@ header.app-head{
 .logo-mark .trace{ stroke: var(--rosewood); }
 .logo-mark .trace-dot{ fill: var(--rosewood); }
 
-.title-grape{
-  flex-shrink: 0;
-  width: 42px;
-  height: auto;
-  fill: none;
-  stroke: var(--gold);
-  stroke-width: 5;
-  opacity: 0.85;
-}
-
 .wordmark{
   display:flex;
   align-items:baseline;
@@ -353,8 +343,7 @@ input:focus, select:focus, textarea:focus{
 .account-bar{
   display:flex;
   align-items:center;
-  justify-content: flex-end;
-  margin-bottom: 20px;
+  flex-shrink: 0;
 }
 
 .account-menu-wrap{ position: relative; }
@@ -546,7 +535,6 @@ input:focus, select:focus, textarea:focus{
   border-bottom: 1px solid var(--hairline);
   margin-bottom: 4px;
   padding-bottom: 2px;
-  justify-content: space-between;
 }
 .tab-row-right{
   display:flex;
@@ -1133,7 +1121,6 @@ input:focus, select:focus, textarea:focus{
 
   .brand-row{ gap: 10px; }
   .logo-mark{ width: 34px; height: 34px; }
-  .title-grape{ width: 32px; }
   h1{ font-size: 27px; }
   .tracker-tag{ font-size: 10px; padding: 3px 6px 2px; }
 
@@ -1212,27 +1199,6 @@ input:focus, select:focus, textarea:focus{
 <div class="wrap">
 
   <div class="sticky-top">
-    <div id="account-bar" class="account-bar" style="display:none;">
-      <div class="account-menu-wrap">
-        <button id="account-trigger" class="account-trigger">
-          <span class="account-trigger-icon">☰</span>
-          <span>Menu</span>
-        </button>
-        <div id="account-dropdown" class="account-dropdown" style="display:none;">
-          <div class="account-dropdown-row">
-            <span class="account-dropdown-label">Account</span>
-            <span id="account-email" class="account-email-value"></span>
-          </div>
-          <div class="account-dropdown-row">
-            <span class="account-dropdown-label">Codice cantina</span>
-            <span id="account-cantina-code" class="account-cantina-code"></span>
-          </div>
-          <button id="account-edit-reviewers" class="account-dropdown-item">✎ Nomi votanti</button>
-          <button id="account-logout" class="account-dropdown-item account-logout">⎋ Esci</button>
-        </div>
-      </div>
-    </div>
-
     <header class="app-head">
       <p class="eyebrow">Cantina personale — registro d'assaggio</p>
       <div class="brand-row">
@@ -1253,24 +1219,26 @@ input:focus, select:focus, textarea:focus{
             <span class="tracker-tag">Tracker</span>
           </div>
         </div>
-        <svg class="title-grape" viewBox="0 0 170 140" xmlns="http://www.w3.org/2000/svg">
-          <path d="M85 30 C 87 22, 90 14, 90 8" stroke-linecap="round"/>
-          <path d="M88 11 C 82 7, 70 7, 62 12" stroke-linecap="round"/>
-          <path d="M90 11 C 96 2, 108 0, 108 8 C 108 14, 100 14, 100 8 C 100 5, 103 4, 105 6" stroke-linecap="round"/>
-          <g transform="translate(58 12) rotate(-20) scale(0.85)">
-            <path d="M0 -18 C 10 -14, 16 -4, 12 6 C 18 10, 16 20, 6 20 C 4 26, -4 26, -6 20 C -16 20, -18 10, -12 6 C -16 -4, -10 -14, 0 -18 Z"/>
-          </g>
-          <circle cx="59.5" cy="34" r="8"/>
-          <circle cx="76.5" cy="34" r="8"/>
-          <circle cx="93.5" cy="34" r="8"/>
-          <circle cx="110.5" cy="34" r="8"/>
-          <circle cx="68" cy="49" r="8"/>
-          <circle cx="85" cy="49" r="8"/>
-          <circle cx="102" cy="49" r="8"/>
-          <circle cx="76.5" cy="64" r="8"/>
-          <circle cx="93.5" cy="64" r="8"/>
-          <circle cx="85" cy="79" r="8"/>
-        </svg>
+        <div id="account-bar" class="account-bar" style="display:none;">
+          <div class="account-menu-wrap">
+            <button id="account-trigger" class="account-trigger">
+              <span class="account-trigger-icon">☰</span>
+              <span>Menu</span>
+            </button>
+            <div id="account-dropdown" class="account-dropdown" style="display:none;">
+              <div class="account-dropdown-row">
+                <span class="account-dropdown-label">Account</span>
+                <span id="account-email" class="account-email-value"></span>
+              </div>
+              <div class="account-dropdown-row">
+                <span class="account-dropdown-label">Codice cantina</span>
+                <span id="account-cantina-code" class="account-cantina-code"></span>
+              </div>
+              <button id="account-edit-reviewers" class="account-dropdown-item">✎ Nomi votanti</button>
+              <button id="account-logout" class="account-dropdown-item account-logout">⎋ Esci</button>
+            </div>
+          </div>
+        </div>
       </div>
       <p class="subhead">Ogni bottiglia che entra in cantina, con prezzo, note di abbinamento e il giudizio di chi l'ha bevuta con te.</p>
     </header>
