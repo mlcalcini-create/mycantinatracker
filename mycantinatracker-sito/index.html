@@ -744,6 +744,12 @@ input:focus, select:focus, textarea:focus{
   color: var(--parchment);
   margin: 0 0 4px;
 }
+.top-wine-badge{
+  margin-left: 8px;
+  font-size: 16px;
+  vertical-align: middle;
+  filter: drop-shadow(0 0 3px rgba(227,185,94,0.7));
+}
 .wine-meta{
   font-size: 12.5px;
   color: var(--ink-mute);
@@ -922,6 +928,9 @@ input:focus, select:focus, textarea:focus{
   max-width: 56ch;
 }
 .rank-section{ margin-bottom: 28px; }
+.rebuy-title{ color: var(--rosewood); }
+.rebuy-section .inv-row{ border-color: var(--rosewood-soft); }
+.rebuy-section .inv-row:hover{ border-color: var(--rosewood); }
 .rank-section-title{
   font-family: 'IBM Plex Mono', monospace;
   font-size: 11px;
@@ -1106,9 +1115,34 @@ input:focus, select:focus, textarea:focus{
   padding-bottom: 20px;
   border-bottom: 1px solid var(--hairline);
 }
-.inv-type-item{ white-space: nowrap; }
+.inv-type-item{
+  white-space: nowrap;
+  background: none;
+  border: none;
+  border-radius: 3px;
+  padding: 2px 5px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12.5px;
+  color: var(--ink-mute);
+}
+.inv-type-item:hover{ color: var(--parchment); background: rgba(244,233,221,0.06); }
+.inv-type-active{ color: var(--gold); background: rgba(227,185,94,0.1); }
 .inv-type-n{ color: var(--gold); }
+.inv-type-active .inv-type-n{ color: var(--gold); }
+.inv-type-empty .inv-type-n{ color: var(--rosewood); }
 .inv-type-sep{ color: var(--hairline); margin: 0 10px; }
+
+.inv-row-voted{ border-color: var(--gold-soft); }
+.inv-row-voted:hover{ border-color: var(--gold); }
+.inv-row-out{ border-color: var(--rosewood); }
+.inv-row-out:hover{ border-color: var(--rosewood); }
+.inv-type-tag{
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--rosewood);
+}
 
 .inv-row{
   display:flex;
@@ -1131,6 +1165,9 @@ input:focus, select:focus, textarea:focus{
   margin: 0 0 3px;
 }
 .inv-meta{ font-size: 12px; color: var(--ink-mute); margin:0; }
+.inv-rating{ color: var(--gold); }
+.inv-see-votes{ color: var(--ink-mute); font-style: italic; }
+.inv-row:hover .inv-see-votes{ color: var(--gold); }
 .inv-qty-block{
   display:flex;
   align-items:center;
@@ -1554,6 +1591,15 @@ function ratingStats(w){
   return { rawAvg, bayesAvg, count: stars.length };
 }
 
+// Vini ben votati (media >= 4) rimasti con scorta bassa o esaurita: buoni
+// candidati da ricomprare. Ordinati dal più apprezzato.
+function computeRebuySuggestions(list){
+  return list
+    .map(w => ({ w, stats: ratingStats(w) }))
+    .filter(x => x.stats && x.stats.rawAvg >= 4 && getQty(x.w) <= 1)
+    .sort((a, b) => b.stats.rawAvg - a.stats.rawAvg);
+}
+
 // Punteggio 0-100: 60% qualita' (voti) + 40% convenienza. Il confronto
 // prezzo/qualita' avviene SOLO tra vini della stessa tipologia (un Rosso
 // da 12 euro e uno Champagne da 30 non sono comparabili sullo stesso asse).
@@ -1561,8 +1607,10 @@ function computeRanking(list){
   const byType = {};
   TYPES.forEach(t => { byType[t] = []; });
   const unrated = [];
+  const typesPresent = new Set();
 
   list.forEach(w => {
+    typesPresent.add(w.type);
     const stats = ratingStats(w);
     if(!stats){ unrated.push(w); return; }
     if(!byType[w.type]) byType[w.type] = [];
@@ -1571,6 +1619,7 @@ function computeRanking(list){
 
   const groups = {};
   let totalRanked = 0;
+  const overall = [];
 
   TYPES.forEach(t => {
     const items = byType[t] || [];
@@ -1589,13 +1638,18 @@ function computeRanking(list){
       }
       const score = Math.round(100 * (0.6 * qualityNorm + 0.4 * valueNorm));
       return { w: x.w, stats: x.stats, score };
-    }).sort((a,b) => b.score - a.score);
+    }).sort((a,b) => b.stats.bayesAvg - a.stats.bayesAvg || b.score - a.score);
 
     groups[t] = scored;
     totalRanked += scored.length;
+    overall.push(...scored);
   });
 
-  return { groups, unrated, totalRanked };
+  // Classifica complessiva vera: solo per voto (il prezzo NON si confronta
+  // tra tipologie diverse, quindi qui non ha senso includerlo nel punteggio).
+  overall.sort((a, b) => b.stats.bayesAvg - a.stats.bayesAvg || b.stats.count - a.stats.count);
+
+  return { groups, unrated, totalRanked, typesPresent: TYPES.filter(t => typesPresent.has(t)), overall };
 }
 
 function getQty(w){
@@ -1835,9 +1889,9 @@ function renderInventoryView(data){
     return `<div class="empty"><p>Il registro è vuoto.</p></div>`;
   }
 
-  const breakdown = typesWithResults
-    .filter(t => byType[t] > 0)
-    .map(t => `<span class="inv-type-item"><span class="inv-type-n">${byType[t]}</span> ${t}</span>`)
+  const allChip = `<button type="button" class="inv-type-item ${inventoryTypeFilter === null ? 'inv-type-active' : ''}" data-type-filter="__all__"><span class="inv-type-n">${totalBottles}</span> Tutte</button>`;
+  const breakdown = allChip + '<span class="inv-type-sep">·</span>' + typesWithResults
+    .map(t => `<button type="button" class="inv-type-item ${inventoryTypeFilter === t ? 'inv-type-active' : ''} ${byType[t] === 0 ? 'inv-type-empty' : ''}" data-type-filter="${t}"><span class="inv-type-n">${byType[t]}</span> ${t}</button>`)
     .join('<span class="inv-type-sep">·</span>');
 
   const summary = `
@@ -1853,15 +1907,43 @@ function renderInventoryView(data){
     </div>
     <p class="inv-type-breakdown">${breakdown}</p>`;
 
-  const sections = typesWithResults.map(t => {
+  const rebuyAll = computeRebuySuggestions(Object.values(groups).flat().map(g => g.w));
+  const rebuy = inventoryTypeFilter ? rebuyAll.filter(r => r.w.type === inventoryTypeFilter) : rebuyAll;
+  const rebuyHtml = rebuy.length ? `
+    <div class="rank-section rebuy-section">
+      <h3 class="rank-section-title rebuy-title">🔁 Da ricomprare — ben votati, scorta quasi finita</h3>
+      <div class="rank-list">
+        ${rebuy.map(({ w, stats }) => {
+          const roundedStars = Math.round(stats.rawAvg * 2) / 2;
+          const qty = getQty(w);
+          return `
+            <div class="inv-row ${qty === 0 ? 'inv-row-out' : ''}" data-wine-id="${w.id}">
+              <div class="inv-main">
+                <p class="inv-name">${escapeHtml(w.name)}</p>
+                <p class="inv-meta"><span class="inv-type-tag">${escapeHtml(w.type)}</span> <span class="rank-dot">·</span> ${escapeHtml(w.cantina||'')} <span class="rank-dot">·</span> ${starsDisplay(Math.round(roundedStars))} ${roundedStars.toFixed(1)}</p>
+              </div>
+              <div class="inv-qty-block">
+                <span class="inv-qty ${qty === 0 ? 'inv-qty-zero' : ''}">${qty === 0 ? 'Esaurita' : qty + ' bott.'}</span>
+              </div>
+            </div>`;
+        }).join('')}
+      </div>
+    </div>` : '';
+
+  const sectionsTypes = inventoryTypeFilter ? typesWithResults.filter(t => t === inventoryTypeFilter) : typesWithResults;
+  const sections = sectionsTypes.map(t => {
     const rows = groups[t].map(({ w, qty }) => {
       const priceStr = w.price ? `€${w.price}` : '—';
       const zeroClass = qty === 0 ? 'inv-qty-zero' : '';
+      const stats = ratingStats(w);
+      const ratingHtml = stats
+        ? `<span class="rank-dot">·</span> <span class="inv-rating">${starsDisplay(Math.round(stats.rawAvg))} ${stats.rawAvg.toFixed(1)}</span> <span class="inv-see-votes">★ Vedi voti</span>`
+        : `<span class="rank-dot">·</span> <span class="inv-see-votes">☆ Vota</span>`;
       return `
-        <div class="inv-row" data-wine-id="${w.id}">
+        <div class="inv-row ${qty === 0 ? 'inv-row-out' : (stats ? 'inv-row-voted' : '')}" data-wine-id="${w.id}">
           <div class="inv-main">
             <p class="inv-name">${escapeHtml(w.name)}</p>
-            <p class="inv-meta">${escapeHtml(w.cantina||'')} <span class="rank-dot">·</span> ${priceStr}</p>
+            <p class="inv-meta">${escapeHtml(w.cantina||'')} <span class="rank-dot">·</span> ${priceStr} ${ratingHtml}</p>
           </div>
           <div class="inv-qty-block">
             <span class="inv-qty ${zeroClass}">${qty === 0 ? 'Esaurita' : qty + ' bott.'}</span>
@@ -1880,51 +1962,91 @@ function renderInventoryView(data){
       </div>`;
   }).join('');
 
-  return `${summary}${sections}`;
+  return `${summary}${rebuyHtml}${sections}`;
 }
 
 function renderRankingView(data){
-  const { groups, unrated } = data;
+  const { groups, unrated, typesPresent, overall } = data;
   const typesWithResults = TYPES.filter(t => groups[t] && groups[t].length > 0);
 
+  if(typesPresent.length === 0){
+    return `<div class="empty"><p>Il registro è vuoto.</p></div>`;
+  }
   if(typesWithResults.length === 0){
     return `<div class="empty"><p>Nessun vino ha ancora un voto. Assegna almeno una valutazione per vederlo qui.</p></div>`;
   }
 
-  const medals = ['🥇','🥈','🥉'];
+  const allChip = `<button type="button" class="inv-type-item ${rankingTypeFilter === null ? 'inv-type-active' : ''}" data-rank-type-filter="__all__"><span class="inv-type-n">${overall.length}</span> Tutte</button>`;
+  const breakdown = allChip + '<span class="inv-type-sep">·</span>' + typesPresent
+    .map(t => {
+      const n = groups[t] ? groups[t].length : 0;
+      return `<button type="button" class="inv-type-item ${rankingTypeFilter === t ? 'inv-type-active' : ''} ${n === 0 ? 'inv-type-empty' : ''}" data-rank-type-filter="${t}"><span class="inv-type-n">${n}</span> ${t}</button>`;
+    })
+    .join('<span class="inv-type-sep">·</span>');
 
-  const sections = typesWithResults.map(t => {
-    const rows = groups[t].map((r, i) => {
+  const medals = ['🥇','🥈','🥉'];
+  let bodyHtml, explainerText;
+
+  if(rankingTypeFilter === null){
+    // Classifica complessiva vera: un'unica lista, medaglie solo ai 3 voti
+    // migliori in assoluto — non alla "migliore" di ogni singola tipologia.
+    explainerText = 'Classifica complessiva: ordinata solo per voto medio (il confronto sul prezzo ha senso solo dentro la stessa tipologia — seleziona una categoria qui sopra per vederlo). Medaglia solo se il punteggio arriva almeno a 75, altrimenti resta un numero.';
+    const rows = overall.map((r, i) => {
       const priceStr = r.w.price ? `€${r.w.price}` : '—';
       const roundedStars = Math.round(r.stats.rawAvg * 2) / 2;
+      const posLabel = (medals[i] && r.score >= 75) ? medals[i] : (i+1);
       return `
         <div class="rank-row" data-wine-id="${r.w.id}">
-          <div class="rank-pos">${medals[i] || (i+1)}</div>
+          <div class="rank-pos">${posLabel}</div>
           <div class="rank-main">
             <p class="rank-name">${escapeHtml(r.w.name)}</p>
-            <p class="rank-meta">${escapeHtml(r.w.cantina||'')} <span class="rank-dot">·</span> ${priceStr}</p>
+            <p class="rank-meta"><span class="inv-type-tag">${escapeHtml(r.w.type)}</span> <span class="rank-dot">·</span> ${escapeHtml(r.w.cantina||'')} <span class="rank-dot">·</span> ${priceStr}</p>
           </div>
           <div class="rank-score-block">
-            <div class="rank-score">${r.score}<span class="rank-score-max">/100</span></div>
             <div class="rank-stars">${starsDisplay(Math.round(roundedStars))} <span class="rank-stars-n">${roundedStars.toFixed(1)} · ${r.stats.count} vot${r.stats.count===1?'o':'i'}</span></div>
           </div>
         </div>`;
     }).join('');
-
-    return `
-      <div class="rank-section">
-        <h3 class="rank-section-title">${escapeHtml(t)}</h3>
-        <div class="rank-list">${rows}</div>
-      </div>`;
-  }).join('');
+    bodyHtml = `<div class="rank-list">${rows}</div>`;
+  } else {
+    explainerText = 'Ordinati per voto medio più alto. Il punteggio a destra pesa anche il prezzo (60% qualità + 40% convenienza, confrontato solo con vini della stessa tipologia).';
+    const items = groups[rankingTypeFilter] || [];
+    if(items.length === 0){
+      bodyHtml = `<div class="empty"><p>Nessun vino votato in "${rankingTypeFilter}" per ora.</p></div>`;
+    } else {
+      const rows = items.map((r, i) => {
+        const priceStr = r.w.price ? `€${r.w.price}` : '—';
+        const roundedStars = Math.round(r.stats.rawAvg * 2) / 2;
+        const posLabel = (medals[i] && r.score >= 75) ? medals[i] : (i+1);
+        return `
+          <div class="rank-row" data-wine-id="${r.w.id}">
+            <div class="rank-pos">${posLabel}</div>
+            <div class="rank-main">
+              <p class="rank-name">${escapeHtml(r.w.name)}</p>
+              <p class="rank-meta">${escapeHtml(r.w.cantina||'')} <span class="rank-dot">·</span> ${priceStr}</p>
+            </div>
+            <div class="rank-score-block">
+              <div class="rank-score">${r.score}<span class="rank-score-max">/100</span></div>
+              <div class="rank-stars">${starsDisplay(Math.round(roundedStars))} <span class="rank-stars-n">${roundedStars.toFixed(1)} · ${r.stats.count} vot${r.stats.count===1?'o':'i'}</span></div>
+            </div>
+          </div>`;
+      }).join('');
+      bodyHtml = `
+        <div class="rank-section">
+          <h3 class="rank-section-title">${escapeHtml(rankingTypeFilter)}</h3>
+          <div class="rank-list">${rows}</div>
+        </div>`;
+    }
+  }
 
   const unratedHtml = unrated.length
     ? `<p class="rank-footnote">Non ancora votati: ${unrated.map(w => escapeHtml(w.name)).join(', ')}</p>`
     : '';
 
   return `
-    <p class="rank-explainer">Punteggio: 60% qualità (media voti, smorzata sul numero di valutazioni) + 40% convenienza (prezzo confrontato solo con vini della stessa tipologia).</p>
-    ${sections}
+    <p class="inv-type-breakdown">${breakdown}</p>
+    <p class="rank-explainer">${explainerText}</p>
+    ${bodyHtml}
     ${unratedHtml}`;
 }
 
@@ -1975,6 +2097,8 @@ async function saveReviewerNames(names){
 // Registra ogni bottiglia "stappata" (non gli aumenti) per le statistiche mensili.
 let consumptionLog = null; // cache: null = non ancora caricato dallo storage
 let expandedStatYear = null; // quale anno è aperto nella vista Statistiche
+let inventoryTypeFilter = null; // tipologia selezionata cliccando il riepilogo in Inventario, null = tutte
+let rankingTypeFilter = null; // tipologia selezionata cliccando il riepilogo in Classifica, null = tutte
 
 async function logConsumption(wine){
   const entry = {
@@ -2173,13 +2297,17 @@ function render(){
   } else if(activeTab === 'Statistiche'){
     listHtml = renderStatsView();
   } else {
+    // punteggio 0-100 gia' calcolato per la Classifica, riusato qui per l'ordinamento
+    const scoreById = {};
+    Object.values(rankingData.groups).flat().forEach(r => { scoreById[r.w.id] = r.score; });
+
     const filtered = activeTab === 'Tutti' ? wines : wines.filter(w => w.type === activeTab);
-    const sorted = [...filtered].sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+    const sorted = [...filtered].sort((a,b) => (scoreById[b.id] ?? -1) - (scoreById[a.id] ?? -1));
     const emptyMsg = activeTab === 'Tutti'
       ? 'Nessuna bottiglia ancora — aggiungi la prima da "Inventario".'
       : `Nessuna bottiglia in "${activeTab}" per ora.`;
     listHtml = sorted.length
-      ? `<div class="wine-list">${sorted.map(renderWineCard).join('')}</div>`
+      ? `<div class="wine-list">${sorted.map((w, i) => renderWineCard(w, i < 3 && (scoreById[w.id] ?? 0) >= 75)).join('')}</div>`
       : `<div class="empty"><p>${emptyMsg}</p></div>`;
   }
 
@@ -2200,6 +2328,13 @@ function render(){
   });
 
   if(activeTab === 'Classifica'){
+    document.querySelectorAll('[data-rank-type-filter]').forEach(el => {
+      el.addEventListener('click', () => {
+        const t = el.dataset.rankTypeFilter;
+        rankingTypeFilter = (t === '__all__') ? null : (rankingTypeFilter === t ? null : t);
+        render();
+      });
+    });
     document.querySelectorAll('.rank-row').forEach(el => {
       el.addEventListener('click', () => {
         const wineId = el.dataset.wineId;
@@ -2214,6 +2349,13 @@ function render(){
   }
 
   if(activeTab === 'Inventario'){
+    document.querySelectorAll('[data-type-filter]').forEach(el => {
+      el.addEventListener('click', () => {
+        const t = el.dataset.typeFilter;
+        inventoryTypeFilter = (t === '__all__') ? null : (inventoryTypeFilter === t ? null : t);
+        render();
+      });
+    });
     document.querySelectorAll('.inv-row').forEach(el => {
       el.addEventListener('click', (e) => {
         if(e.target.closest('.inv-stepper')) return; // i pulsanti +/- non aprono la scheda
@@ -2285,7 +2427,7 @@ function render(){
   loadThumbnails();
 }
 
-function renderWineCard(w){
+function renderWineCard(w, isTopWine){
   const priceStr = w.price ? `€${w.price}` : '—';
   const metaParts = [w.cantina, w.vitigno, w.region, w.vintage, w.gradazione ? w.gradazione + '% vol' : ''].filter(Boolean);
 
@@ -2297,7 +2439,7 @@ function renderWineCard(w){
     const hasRating = review && review.stars;
     const isHonor = hasRating && !!review.honor;
     const starsInner = hasRating
-      ? `<span class="stub-stars">${starsDisplay(review.stars)}${isHonor ? '<span class="honor-badge" title="Menzione d\'onore — 5 stelle">🎖</span>' : ''}</span>`
+      ? `<span class="stub-stars">${starsDisplay(review.stars)}${isHonor ? '<span class="honor-badge" title="Menzione d\'onore assegnata da ' + escapeHtml(name) + '">🎖</span>' : ''}</span>`
       : `<span class="stub-vote-cta">☆ Vota</span>`;
     return `<div class="stub ${active ? 'active' : ''}" data-wine="${w.id}" data-reviewer="${escapeHtml(name)}">
       <span class="stub-name">${escapeHtml(name)}</span>
@@ -2380,7 +2522,7 @@ function renderWineCard(w){
         ${thumbHtml}
         <div class="spine">${escapeHtml(w.type || 'Vino')}</div>
         <div class="wine-main">
-          <p class="wine-name">${escapeHtml(w.name)}</p>
+          <p class="wine-name">${escapeHtml(w.name)}${isTopWine ? '<span class="top-wine-badge" title="Tra i più apprezzati (punteggio almeno 75)">🏆</span>' : ''}</p>
           <p class="wine-meta">${metaParts.map(escapeHtml).join('</span><span>')}</p>
           ${w.note ? `<p class="wine-note">${escapeHtml(w.note)}</p>` : ''}
         </div>
