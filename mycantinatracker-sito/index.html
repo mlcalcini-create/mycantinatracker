@@ -371,7 +371,16 @@ input:focus, select:focus, textarea:focus{
   color: var(--ink-mute);
 }
 .account-trigger:hover{ border-color: var(--hairline); color: var(--parchment); background: none; }
-.account-caret{ font-size: 10px; color: var(--ink-mute); }
+.account-trigger-icon{ font-size: 13px; }
+.account-email-value{
+  font-family: 'Work Sans', sans-serif;
+  font-size: 12px;
+  color: var(--ink-soft);
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .account-dropdown{
   position: absolute;
@@ -958,17 +967,40 @@ input:focus, select:focus, textarea:focus{
   color: var(--ink-mute);
 }
 
-/* ---- stats view chart ---- */
-.stat-chart{ width: 100%; max-width: 100%; height: auto; overflow: visible; }
-.stat-bar-value{
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 11px;
-  fill: var(--parchment);
+/* ---- stats view: grafico a barre orizzontali (HTML/CSS, mai distorto) ---- */
+.hbar-chart{ display:flex; flex-direction:column; gap: 10px; }
+.hbar-row{
+  display:flex;
+  align-items:center;
+  gap: 12px;
 }
-.stat-bar-label{
+.hbar-label{
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 10px;
-  fill: var(--ink-mute);
+  font-size: 11.5px;
+  color: var(--ink-mute);
+  width: 54px;
+  flex-shrink: 0;
+  text-align: right;
+}
+.hbar-track{
+  flex: 1;
+  height: 16px;
+  background: var(--cask);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.hbar-fill{
+  height: 100%;
+  border-radius: 3px;
+  transition: width .4s ease;
+}
+.hbar-value{
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12.5px;
+  color: var(--parchment);
+  width: 46px;
+  flex-shrink: 0;
+  text-align: left;
 }
 
 /* ---- pairing view (Abbinamento) ---- */
@@ -1183,10 +1215,14 @@ input:focus, select:focus, textarea:focus{
     <div id="account-bar" class="account-bar" style="display:none;">
       <div class="account-menu-wrap">
         <button id="account-trigger" class="account-trigger">
-          <span id="account-email"></span>
-          <span class="account-caret">▾</span>
+          <span class="account-trigger-icon">☰</span>
+          <span>Menu</span>
         </button>
         <div id="account-dropdown" class="account-dropdown" style="display:none;">
+          <div class="account-dropdown-row">
+            <span class="account-dropdown-label">Account</span>
+            <span id="account-email" class="account-email-value"></span>
+          </div>
           <div class="account-dropdown-row">
             <span class="account-dropdown-label">Codice cantina</span>
             <span id="account-cantina-code" class="account-cantina-code"></span>
@@ -1270,6 +1306,10 @@ input:focus, select:focus, textarea:focus{
     <span class="bottom-nav-icon">🍷</span>
     <span class="bottom-nav-label">Cantina</span>
   </button>
+  <button class="bottom-nav-item" data-tab="Classifica">
+    <span class="bottom-nav-icon">★</span>
+    <span class="bottom-nav-label">Classifica</span>
+  </button>
   <button class="bottom-nav-item" data-tab="Abbinamento">
     <span class="bottom-nav-icon">🍽</span>
     <span class="bottom-nav-label">Abbinamento</span>
@@ -1277,10 +1317,6 @@ input:focus, select:focus, textarea:focus{
   <button class="bottom-nav-item" data-tab="Inventario">
     <span class="bottom-nav-icon">▤</span>
     <span class="bottom-nav-label">Inventario</span>
-  </button>
-  <button class="bottom-nav-item" data-tab="Classifica">
-    <span class="bottom-nav-icon">★</span>
-    <span class="bottom-nav-label">Classifica</span>
   </button>
   <button class="bottom-nav-item" data-tab="Statistiche">
     <span class="bottom-nav-icon">📊</span>
@@ -1700,21 +1736,19 @@ function renderStatsView(){
     return `<div class="empty"><p>Nessun consumo registrato ancora — ogni volta che tocchi "−" su una bottiglia, qui comparirà la statistica del mese.</p></div>`;
   }
 
+  const recentFirst = [...stats].reverse(); // mese più recente in cima, come un cruscotto
   const maxCount = Math.max(...stats.map(s => s.count), 1);
   const maxSpent = Math.max(...stats.map(s => s.spent), 1);
-  const barWidth = 36, gap = 22, chartHeight = 110;
-  const svgWidth = stats.length * (barWidth + gap);
 
-  function buildBars(valueKey, maxVal, color){
-    return stats.map((s, i) => {
-      const h = Math.max(2, Math.round((s[valueKey] / maxVal) * chartHeight));
-      const x = i * (barWidth + gap);
-      const y = chartHeight - h;
-      const valLabel = valueKey === 'spent' ? '€' + s.spent.toFixed(0) : s.count;
+  function buildRows(valueKey, maxVal, colorVar, formatValue){
+    return recentFirst.map(s => {
+      const pct = Math.max(6, Math.round((s[valueKey] / maxVal) * 100));
       return `
-        <text x="${x + barWidth/2}" y="${y - 8}" text-anchor="middle" class="stat-bar-value">${valLabel}</text>
-        <rect x="${x}" y="${y}" width="${barWidth}" height="${h}" rx="3" fill="${color}"/>
-        <text x="${x + barWidth/2}" y="${chartHeight + 18}" text-anchor="middle" class="stat-bar-label">${monthLabel(s.month)}</text>`;
+        <div class="hbar-row">
+          <span class="hbar-label">${monthLabel(s.month)}</span>
+          <div class="hbar-track"><div class="hbar-fill" style="width:${pct}%; background:${colorVar};"></div></div>
+          <span class="hbar-value">${formatValue(s[valueKey])}</span>
+        </div>`;
     }).join('');
   }
 
@@ -1734,11 +1768,11 @@ function renderStatsView(){
     </div>
     <div class="rank-section">
       <h3 class="rank-section-title">Bottiglie bevute al mese</h3>
-      <svg viewBox="0 0 ${svgWidth} ${chartHeight + 32}" class="stat-chart">${buildBars('count', maxCount, 'var(--gold)')}</svg>
+      <div class="hbar-chart">${buildRows('count', maxCount, 'var(--gold)', v => v)}</div>
     </div>
     <div class="rank-section">
       <h3 class="rank-section-title">Spesa mensile stimata</h3>
-      <svg viewBox="0 0 ${svgWidth} ${chartHeight + 32}" class="stat-chart">${buildBars('spent', maxSpent, 'var(--rosewood)')}</svg>
+      <div class="hbar-chart">${buildRows('spent', maxSpent, 'var(--rosewood)', v => '€' + v.toFixed(0))}</div>
     </div>`;
 }
 
@@ -2059,14 +2093,14 @@ function render(){
         Tutti<span class="tab-count">${counts['Tutti'] || 0}</span>
       </button>
       <div class="tab-row-right">
+        <button class="tab tab-ranking ${activeTab === 'Classifica' ? 'tab-active' : ''}" data-tab="Classifica">
+          ★ Classifica<span class="tab-count">${counts['Classifica'] || 0}</span>
+        </button>
         <button class="tab tab-ranking ${activeTab === 'Abbinamento' ? 'tab-active' : ''}" data-tab="Abbinamento">
           🍽 Abbinamento
         </button>
         <button class="tab tab-ranking ${activeTab === 'Inventario' ? 'tab-active' : ''}" data-tab="Inventario">
           ▤ Inventario<span class="tab-count">${counts['Inventario'] || 0}</span>
-        </button>
-        <button class="tab tab-ranking ${activeTab === 'Classifica' ? 'tab-active' : ''}" data-tab="Classifica">
-          ★ Classifica<span class="tab-count">${counts['Classifica'] || 0}</span>
         </button>
         <button class="tab tab-ranking ${activeTab === 'Statistiche' ? 'tab-active' : ''}" data-tab="Statistiche">
           📊 Statistiche
