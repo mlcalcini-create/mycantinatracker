@@ -1292,6 +1292,7 @@ input:focus, select:focus, textarea:focus{
                 <span id="account-cantina-code" class="account-cantina-code"></span>
               </div>
               <button id="account-edit-reviewers" class="account-dropdown-item">✎ Nomi votanti</button>
+              <button id="account-change-cantina" class="account-dropdown-item">🔑 Cambia codice cantina</button>
               <button id="account-logout" class="account-dropdown-item account-logout">⎋ Esci</button>
             </div>
           </div>
@@ -2797,6 +2798,11 @@ document.getElementById('account-edit-reviewers').addEventListener('click', () =
   renderReviewerSettings();
 });
 
+document.getElementById('account-change-cantina').addEventListener('click', () => {
+  document.getElementById('account-dropdown').style.display = 'none';
+  renderCantinaSettings();
+});
+
 document.getElementById('account-trigger').addEventListener('click', (e) => {
   e.stopPropagation();
   const dropdown = document.getElementById('account-dropdown');
@@ -2842,6 +2848,51 @@ function renderReviewerSettings(){
     render();
   });
   document.getElementById('rev-cancel-btn').addEventListener('click', () => { panel.innerHTML = ''; });
+}
+
+function renderCantinaSettings(){
+  const panel = document.getElementById('reviewer-settings-panel');
+  panel.innerHTML = `
+    <div class="panel">
+      <h2>Cambia codice cantina</h2>
+      <p class="overlay-text">Codice attuale: <span class="cantina-code" style="display:inline-block; font-size:15px; padding:4px 10px; margin:0 0 4px;">${escapeHtml(currentCantinaId || '—')}</span></p>
+      <p class="overlay-text">Se hai inserito il codice sbagliato al primo accesso, scrivi qui quello corretto per entrare nella cantina giusta. I dati che vedi ora restano dove sono, semplicemente ti sposti su un'altra cantina.</p>
+      <div class="field-grid">
+        <div class="full">
+          <label for="cantina-change-input">Nuovo codice cantina</label>
+          <input type="text" id="cantina-change-input" placeholder="Es. AB12-CD34" value="${escapeHtml(currentCantinaId || '')}" />
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-primary" id="cantina-change-save">Entra con questo codice</button>
+        <button id="cantina-change-cancel">Annulla</button>
+      </div>
+      <p id="cantina-change-status" class="overlay-status"></p>
+    </div>`;
+
+  document.getElementById('cantina-change-save').addEventListener('click', async () => {
+    const code = document.getElementById('cantina-change-input').value.trim().toUpperCase();
+    const statusEl = document.getElementById('cantina-change-status');
+    if(!code){ statusEl.textContent = 'Inserisci un codice.'; return; }
+    if(code === currentCantinaId){ panel.innerHTML = ''; return; }
+    statusEl.textContent = 'Un attimo…';
+    try{
+      await db.collection('users').doc(currentUser.uid).set({ email: currentUser.email, cantinaId: code }, { merge: true });
+      if(realtimeUnsubscribe){ realtimeUnsubscribe(); realtimeUnsubscribe = null; }
+      currentCantinaId = code;
+      document.getElementById('account-cantina-code').textContent = currentCantinaId;
+      wines = [];
+      consumptionLog = null;
+      lastKnownWinesJson = null;
+      panel.innerHTML = '';
+      storageReady = false;
+      render();
+      await loadWines();
+    }catch(err){
+      statusEl.textContent = 'Qualcosa non ha funzionato, riprova.';
+    }
+  });
+  document.getElementById('cantina-change-cancel').addEventListener('click', () => { panel.innerHTML = ''; });
 }
 
 document.getElementById('btn-seed').addEventListener('click', async () => {
