@@ -109,9 +109,9 @@ body{
 }
 
 header.app-head{
-  margin-bottom: 40px;
+  margin-bottom: 22px;
   border-bottom: 1px solid var(--hairline);
-  padding-bottom: 24px;
+  padding-bottom: 16px;
 }
 
 .brand-row{
@@ -184,9 +184,9 @@ h1{
 
 .toolbar{
   display:flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap:10px;
-  margin: 28px 0 8px;
+  margin: 8px 0 4px;
   flex-wrap: wrap;
 }
 
@@ -574,6 +574,20 @@ input:focus, select:focus, textarea:focus{
   flex-shrink: 0;
 }
 .tab-row:not(.tab-row-all) .tab::after{ left: 12px; right: 12px; }
+.tab-row-all{
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tab-row-all::-webkit-scrollbar{ display:none; }
+.tab-row-all .tab{
+  font-size: 12px;
+  padding: 10px 12px 13px;
+  gap: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.tab-row-all .tab::after{ left: 12px; right: 12px; }
 .tab::after{
   content:"";
   position:absolute;
@@ -762,25 +776,11 @@ input:focus, select:focus, textarea:focus{
 .side-actions button{ padding: 4px 8px; font-size: 11px; }
 
 .card-qty{
-  display:flex;
-  align-items:center;
-  gap: 6px;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 12px;
   color: var(--ink-mute);
 }
-.card-qty-zero .qty-n{ color: var(--rosewood); }
-.qty-btn{
-  width: 20px; height: 20px;
-  padding: 0;
-  line-height: 1;
-  font-size: 13px;
-  border-radius: 3px;
-  display:flex; align-items:center; justify-content:center;
-}
-.qty-btn:disabled{ opacity: 0.3; cursor: default; }
-.qty-btn:disabled:hover{ border-color: var(--hairline); color: var(--ink-soft); background: none; }
-.qty-n{ min-width: 16px; text-align:center; }
+.card-qty-zero{ color: var(--rosewood); }
 
 /* ---- tasting stubs ---- */
 .stub-row{
@@ -819,6 +819,30 @@ input:focus, select:focus, textarea:focus{
   margin-bottom: 4px;
 }
 .stub-stars{ font-size: 13px; letter-spacing: 1px; color: var(--gold); }
+.honor-badge{
+  margin-left: 4px;
+  font-size: 12px;
+  filter: drop-shadow(0 0 2px rgba(227,185,94,0.6));
+}
+.honor-toggle{
+  display:block;
+  width: 100%;
+  text-align: left;
+  background: var(--cask);
+  border: 1px dashed var(--hairline);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  font-size: 12.5px;
+  color: var(--ink-mute);
+  margin-bottom: 12px;
+}
+.honor-toggle:hover{ border-color: var(--gold-soft); color: var(--parchment); background: var(--cask); }
+.honor-toggle.on{
+  border-style: solid;
+  border-color: var(--gold-soft);
+  color: var(--gold);
+  background: rgba(227,185,94,0.08);
+}
 .stub-vote-cta{
   font-size: 11.5px;
   color: var(--rosewood);
@@ -955,40 +979,63 @@ input:focus, select:focus, textarea:focus{
   color: var(--ink-mute);
 }
 
-/* ---- stats view: grafico a barre orizzontali (HTML/CSS, mai distorto) ---- */
-.hbar-chart{ display:flex; flex-direction:column; gap: 10px; }
-.hbar-row{
+/* ---- stats view: sezioni per anno, card mensili piccole in griglia ---- */
+.stat-year-block{ margin-bottom: 20px; }
+.stat-year-header{
   display:flex;
   align-items:center;
-  gap: 12px;
-}
-.hbar-label{
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 11.5px;
-  color: var(--ink-mute);
-  width: 54px;
-  flex-shrink: 0;
-  text-align: right;
-}
-.hbar-track{
-  flex: 1;
-  height: 16px;
-  background: var(--cask);
-  border-radius: 3px;
-  overflow: hidden;
-}
-.hbar-fill{
-  height: 100%;
-  border-radius: 3px;
-  transition: width .4s ease;
-}
-.hbar-value{
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 12.5px;
-  color: var(--parchment);
-  width: 46px;
-  flex-shrink: 0;
+  gap: 10px;
+  width: 100%;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--hairline);
+  border-radius: 0;
+  padding: 10px 4px;
   text-align: left;
+}
+.stat-year-toggle{ color: var(--gold); font-size: 12px; width: 12px; }
+.stat-year-title{
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  font-size: 17px;
+  color: var(--parchment);
+}
+.stat-year-totals{
+  margin-left: auto;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12px;
+  color: var(--ink-mute);
+}
+.stat-month-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.stat-month-card{
+  background: var(--cask-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+.stat-month-label{
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--gold);
+  margin-bottom: 8px;
+}
+.stat-metric{ display:flex; flex-direction:column; gap: 1px; margin-bottom: 6px; }
+.stat-metric:last-child{ margin-bottom: 0; }
+.stat-metric-n{
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 15px;
+  color: var(--parchment);
+}
+.stat-metric-l{
+  font-size: 9.5px;
+  color: var(--ink-mute);
 }
 
 /* ---- pairing view (Abbinamento) ---- */
@@ -1034,9 +1081,7 @@ input:focus, select:focus, textarea:focus{
 .inv-summary{
   display:flex;
   gap: 28px;
-  margin-bottom: 26px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid var(--hairline);
+  margin-bottom: 14px;
 }
 .inv-summary-item{ display:flex; flex-direction:column; gap: 3px; }
 .inv-summary-n{
@@ -1052,6 +1097,18 @@ input:focus, select:focus, textarea:focus{
   letter-spacing: 0.06em;
   font-family: 'IBM Plex Mono', monospace;
 }
+
+.inv-type-breakdown{
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 12.5px;
+  color: var(--ink-mute);
+  margin: 0 0 26px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--hairline);
+}
+.inv-type-item{ white-space: nowrap; }
+.inv-type-n{ color: var(--gold); }
+.inv-type-sep{ color: var(--hairline); margin: 0 10px; }
 
 .inv-row{
   display:flex;
@@ -1553,6 +1610,8 @@ function computeInventory(list){
   TYPES.forEach(t => { groups[t] = []; });
   let totalBottles = 0;
   let totalValue = 0;
+  const byType = {};
+  TYPES.forEach(t => { byType[t] = 0; });
 
   list.forEach(w => {
     const qty = getQty(w);
@@ -1561,13 +1620,15 @@ function computeInventory(list){
     if(!isNaN(p)) totalValue += p * qty;
     if(!groups[w.type]) groups[w.type] = [];
     groups[w.type].push({ w, qty });
+    if(byType[w.type] === undefined) byType[w.type] = 0;
+    byType[w.type] += qty;
   });
 
   TYPES.forEach(t => {
     groups[t].sort((a,b) => b.qty - a.qty);
   });
 
-  return { groups, totalBottles, totalValue };
+  return { groups, totalBottles, totalValue, byType };
 }
 
 let pairingQuery = '';
@@ -1684,7 +1745,22 @@ function computeMonthlyStats(log){
     if(!isNaN(p)) byMonth[key].spent += p;
   });
   const keys = Object.keys(byMonth).sort();
-  return keys.slice(-6).map(k => ({ month: k, ...byMonth[k] }));
+  return keys.map(k => ({ month: k, ...byMonth[k] }));
+}
+
+// Raggruppa i mesi per anno, con i totali di ciascun anno, più recente per primo.
+function groupStatsByYear(stats){
+  const byYear = {};
+  stats.forEach(s => {
+    const year = s.month.split('-')[0];
+    if(!byYear[year]) byYear[year] = { year, months: [], totalCount: 0, totalSpent: 0 };
+    byYear[year].months.push(s);
+    byYear[year].totalCount += s.count;
+    byYear[year].totalSpent += s.spent;
+  });
+  return Object.values(byYear)
+    .sort((a, b) => b.year.localeCompare(a.year))
+    .map(g => ({ ...g, months: [...g.months].sort((a, b) => b.month.localeCompare(a.month)) }));
 }
 
 function monthLabel(key){
@@ -1704,53 +1780,64 @@ function renderStatsView(){
     return `<div class="empty"><p>Nessun consumo registrato ancora — ogni volta che tocchi "−" su una bottiglia, qui comparirà la statistica del mese.</p></div>`;
   }
 
-  const recentFirst = [...stats].reverse(); // mese più recente in cima, come un cruscotto
-  const maxCount = Math.max(...stats.map(s => s.count), 1);
-  const maxSpent = Math.max(...stats.map(s => s.spent), 1);
-
-  function buildRows(valueKey, maxVal, colorVar, formatValue){
-    return recentFirst.map(s => {
-      const pct = Math.max(6, Math.round((s[valueKey] / maxVal) * 100));
-      return `
-        <div class="hbar-row">
-          <span class="hbar-label">${monthLabel(s.month)}</span>
-          <div class="hbar-track"><div class="hbar-fill" style="width:${pct}%; background:${colorVar};"></div></div>
-          <span class="hbar-value">${formatValue(s[valueKey])}</span>
-        </div>`;
-    }).join('');
-  }
+  const years = groupStatsByYear(stats);
+  if(expandedStatYear === null) expandedStatYear = years[0].year; // l'anno più recente aperto di default
 
   const totalBottles = stats.reduce((a, s) => a + s.count, 0);
   const totalSpent = stats.reduce((a, s) => a + s.spent, 0);
+
+  const yearSections = years.map(y => {
+    const isOpen = expandedStatYear === y.year;
+    const cards = y.months.map(s => `
+      <div class="stat-month-card">
+        <div class="stat-month-label">${monthLabel(s.month)}</div>
+        <div class="stat-metric">
+          <span class="stat-metric-n">${s.count}</span>
+          <span class="stat-metric-l">bottigli${s.count === 1 ? 'a bevuta' : 'e bevute'}</span>
+        </div>
+        <div class="stat-metric">
+          <span class="stat-metric-n">€${s.spent.toFixed(2)}</span>
+          <span class="stat-metric-l">spesa</span>
+        </div>
+      </div>`).join('');
+
+    return `
+      <div class="stat-year-block">
+        <button class="stat-year-header" data-year="${y.year}">
+          <span class="stat-year-toggle">${isOpen ? '▾' : '▸'}</span>
+          <span class="stat-year-title">${y.year}</span>
+          <span class="stat-year-totals">${y.totalCount} bottigli${y.totalCount === 1 ? 'a' : 'e'} · €${y.totalSpent.toFixed(2)}</span>
+        </button>
+        ${isOpen ? `<div class="stat-month-grid">${cards}</div>` : ''}
+      </div>`;
+  }).join('');
 
   return `
     <div class="inv-summary">
       <div class="inv-summary-item">
         <span class="inv-summary-n">${totalBottles}</span>
-        <span class="inv-summary-l">bottiglie bevute (ultimi mesi)</span>
+        <span class="inv-summary-l">bottiglie bevute totali</span>
       </div>
       <div class="inv-summary-item">
         <span class="inv-summary-n">€${totalSpent.toFixed(2)}</span>
-        <span class="inv-summary-l">valore consumato</span>
+        <span class="inv-summary-l">valore consumato totale</span>
       </div>
     </div>
-    <div class="rank-section">
-      <h3 class="rank-section-title">Bottiglie bevute al mese</h3>
-      <div class="hbar-chart">${buildRows('count', maxCount, 'var(--gold)', v => v)}</div>
-    </div>
-    <div class="rank-section">
-      <h3 class="rank-section-title">Spesa mensile stimata</h3>
-      <div class="hbar-chart">${buildRows('spent', maxSpent, 'var(--rosewood)', v => '€' + v.toFixed(0))}</div>
-    </div>`;
+    ${yearSections}`;
 }
 
 function renderInventoryView(data){
-  const { groups, totalBottles, totalValue } = data;
+  const { groups, totalBottles, totalValue, byType } = data;
   const typesWithResults = TYPES.filter(t => groups[t] && groups[t].length > 0);
 
   if(typesWithResults.length === 0){
     return `<div class="empty"><p>Il registro è vuoto.</p></div>`;
   }
+
+  const breakdown = typesWithResults
+    .filter(t => byType[t] > 0)
+    .map(t => `<span class="inv-type-item"><span class="inv-type-n">${byType[t]}</span> ${t}</span>`)
+    .join('<span class="inv-type-sep">·</span>');
 
   const summary = `
     <div class="inv-summary">
@@ -1762,7 +1849,8 @@ function renderInventoryView(data){
         <span class="inv-summary-n">€${totalValue.toFixed(2)}</span>
         <span class="inv-summary-l">valore stimato</span>
       </div>
-    </div>`;
+    </div>
+    <p class="inv-type-breakdown">${breakdown}</p>`;
 
   const sections = typesWithResults.map(t => {
     const rows = groups[t].map(({ w, qty }) => {
@@ -1885,6 +1973,7 @@ async function saveReviewerNames(names){
 
 // Registra ogni bottiglia "stappata" (non gli aumenti) per le statistiche mensili.
 let consumptionLog = null; // cache: null = non ancora caricato dallo storage
+let expandedStatYear = null; // quale anno è aperto nella vista Statistiche
 
 async function logConsumption(wine){
   const entry = {
@@ -2022,6 +2111,7 @@ function render(){
   const contentEl = document.getElementById('content');
   const tabsEl = document.getElementById('tabs-holder');
   const seedBtn = document.getElementById('btn-seed');
+  const toolbarEl = document.querySelector('.toolbar');
 
   if(!storageReady){
     contentEl.innerHTML = '<div class="loading">Apertura del registro…</div>';
@@ -2029,16 +2119,11 @@ function render(){
     return;
   }
 
-  seedBtn.style.display = (IS_ARTIFACT_MODE && wines.length === 0) ? 'inline-block' : 'none';
+  // "Tutti" e i filtri per tipologia servono solo a consultare e votare;
+  // "+ Aggiungi bottiglia" resta visibile sempre, su qualsiasi tab.
+  if(toolbarEl) toolbarEl.style.display = 'flex';
 
-  if(wines.length === 0){
-    tabsEl.innerHTML = '';
-    contentEl.innerHTML = `
-      <div class="empty">
-        <p>Il registro è vuoto. Aggiungi la prima bottiglia, oppure carica in un colpo solo i vini già selezionati.</p>
-      </div>`;
-    return;
-  }
+  seedBtn.style.display = (IS_ARTIFACT_MODE && wines.length === 0) ? 'inline-block' : 'none';
 
   const counts = { 'Tutti': wines.length };
   TYPES.forEach(t => { counts[t] = wines.filter(w => w.type === t).length; });
@@ -2089,9 +2174,12 @@ function render(){
   } else {
     const filtered = activeTab === 'Tutti' ? wines : wines.filter(w => w.type === activeTab);
     const sorted = [...filtered].sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+    const emptyMsg = activeTab === 'Tutti'
+      ? 'Nessuna bottiglia ancora — aggiungi la prima da "Inventario".'
+      : `Nessuna bottiglia in "${activeTab}" per ora.`;
     listHtml = sorted.length
       ? `<div class="wine-list">${sorted.map(renderWineCard).join('')}</div>`
-      : `<div class="empty"><p>Nessuna bottiglia in "${activeTab}" per ora.</p></div>`;
+      : `<div class="empty"><p>${emptyMsg}</p></div>`;
   }
 
   tabsEl.innerHTML = tabsHtml;
@@ -2171,6 +2259,16 @@ function render(){
     });
   }
 
+  if(activeTab === 'Statistiche'){
+    document.querySelectorAll('.stat-year-header').forEach(el => {
+      el.addEventListener('click', () => {
+        const year = el.dataset.year;
+        expandedStatYear = expandedStatYear === year ? null : year;
+        render();
+      });
+    });
+  }
+
   if(pendingScrollTo && activeTab !== 'Classifica' && activeTab !== 'Inventario' && activeTab !== 'Abbinamento'){
     const targetId = pendingScrollTo;
     pendingScrollTo = null;
@@ -2196,8 +2294,9 @@ function renderWineCard(w){
     const review = (w.reviews||{})[name];
     const active = openStub && openStub.wineId === w.id && openStub.reviewer === name;
     const hasRating = review && review.stars;
+    const isHonor = hasRating && !!review.honor;
     const starsInner = hasRating
-      ? `<span class="stub-stars">${starsDisplay(review.stars)}</span>`
+      ? `<span class="stub-stars">${starsDisplay(review.stars)}${isHonor ? '<span class="honor-badge" title="Menzione d\'onore — 5 stelle">🎖</span>' : ''}</span>`
       : `<span class="stub-vote-cta">☆ Vota</span>`;
     return `<div class="stub ${active ? 'active' : ''}" data-wine="${w.id}" data-reviewer="${escapeHtml(name)}">
       <span class="stub-name">${escapeHtml(name)}</span>
@@ -2220,6 +2319,9 @@ function renderWineCard(w){
         <div class="star-picker" data-wine="${w.id}" data-reviewer="${escapeHtml(name)}">
           ${[1,2,3,4,5].map(i => `<button type="button" class="star-btn ${i<=review.stars ? 'on':''}" data-star="${i}">★</button>`).join('')}
         </div>
+        <button type="button" class="honor-toggle ${review.honor ? 'on' : ''}" data-action="toggle-honor" data-wine="${w.id}" data-reviewer="${escapeHtml(name)}">
+          🎖 Menzione d'onore ${review.honor ? '(assegnata)' : ''}
+        </button>
         <textarea id="review-text-${w.id}" placeholder="Note libere: cosa ne pensa ${escapeHtml(name)}...">${escapeHtml(review.text||'')}</textarea>
         <div class="form-actions">
           <button class="btn-primary" data-action="save-review" data-wine="${w.id}" data-reviewer="${escapeHtml(name)}">Salva giudizio</button>
@@ -2267,10 +2369,8 @@ function renderWineCard(w){
 
   const cardQty = getQty(w);
   const qtyHtml = `
-    <div class="card-qty ${cardQty === 0 ? 'card-qty-zero' : ''}">
-      <button type="button" class="qty-btn" data-action="qty-dec" data-wine="${w.id}" ${cardQty === 0 ? 'disabled' : ''} title="Bevuta una bottiglia">−</button>
-      <span class="qty-n">${cardQty === 0 ? 'Esaurita' : cardQty}</span>
-      <button type="button" class="qty-btn" data-action="qty-inc" data-wine="${w.id}" title="Aggiungi una bottiglia">+</button>
+    <div class="card-qty ${cardQty === 0 ? 'card-qty-zero' : ''}" title="Gestisci la quantità da Inventario">
+      <span class="qty-n">${cardQty === 0 ? 'Esaurita' : cardQty + ' in cantina'}</span>
     </div>`;
 
   return `
@@ -2299,20 +2399,6 @@ function renderWineCard(w){
 }
 
 function attachCardHandlers(){
-  document.querySelectorAll('[data-action="qty-dec"], [data-action="qty-inc"]').forEach(el => {
-    el.addEventListener('click', async () => {
-      const wineId = el.dataset.wine;
-      const wine = wines.find(w => w.id === wineId);
-      if(!wine) return;
-      const current = getQty(wine);
-      const delta = el.dataset.action === 'qty-dec' ? -1 : 1;
-      wine.quantity = Math.max(0, current + delta);
-      await saveWines();
-      if(delta === -1) await logConsumption(wine);
-      render();
-    });
-  });
-
   document.querySelectorAll('.bottle-thumb[data-thumb-wine]').forEach(el => {
     el.addEventListener('click', () => {
       quickPhotoTargetId = el.dataset.thumbWine;
@@ -2380,6 +2466,18 @@ function attachCardHandlers(){
       wine.reviews = wine.reviews || {};
       wine.reviews[reviewer] = wine.reviews[reviewer] || {stars:0, text:''};
       wine.reviews[reviewer].stars = val;
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-action="toggle-honor"]').forEach(el => {
+    el.addEventListener('click', () => {
+      const wineId = el.dataset.wine;
+      const reviewer = el.dataset.reviewer;
+      const wine = wines.find(w => w.id === wineId);
+      wine.reviews = wine.reviews || {};
+      wine.reviews[reviewer] = wine.reviews[reviewer] || {stars:0, text:''};
+      wine.reviews[reviewer].honor = !wine.reviews[reviewer].honor;
       render();
     });
   });
