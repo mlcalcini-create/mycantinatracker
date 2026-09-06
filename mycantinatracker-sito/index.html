@@ -14,8 +14,12 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="MyCantina">
 <meta name="mobile-web-app-capable" content="yes">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
 :root{
   --cask: #241019;
@@ -350,12 +354,72 @@ input:focus, select:focus, textarea:focus{
   display:flex;
   align-items:center;
   justify-content: flex-end;
-  gap: 12px;
   margin-bottom: 20px;
+}
+
+.account-menu-wrap{ position: relative; }
+
+.account-trigger{
+  display:flex;
+  align-items:center;
+  gap: 6px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 6px 10px;
   font-size: 12.5px;
   color: var(--ink-mute);
 }
-.account-bar #account-logout{ padding: 4px 10px; font-size: 11.5px; }
+.account-trigger:hover{ border-color: var(--hairline); color: var(--parchment); background: none; }
+.account-caret{ font-size: 10px; color: var(--ink-mute); }
+
+.account-dropdown{
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 6;
+  min-width: 220px;
+  background: var(--cask-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  padding: 10px;
+  box-shadow: 0 10px 24px rgba(0,0,0,0.4);
+}
+.account-dropdown-row{
+  display:flex;
+  justify-content: space-between;
+  align-items:center;
+  padding: 6px 8px 10px;
+  border-bottom: 1px solid var(--hairline);
+  margin-bottom: 6px;
+}
+.account-dropdown-label{
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-mute);
+}
+.account-cantina-code{
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13px;
+  color: var(--gold);
+  letter-spacing: 0.04em;
+}
+.account-dropdown-item{
+  display:block;
+  width: 100%;
+  text-align:left;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  padding: 9px 8px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.account-dropdown-item:hover{ background: rgba(244,233,221,0.06); color: var(--parchment); }
+.account-logout{ color: var(--rosewood); }
+.account-logout:hover{ background: rgba(180,101,122,0.1); color: var(--rosewood); }
 
 /* ---- auth / cantina overlay screens ---- */
 .overlay-screen{
@@ -1116,6 +1180,23 @@ input:focus, select:focus, textarea:focus{
 <div class="wrap">
 
   <div class="sticky-top">
+    <div id="account-bar" class="account-bar" style="display:none;">
+      <div class="account-menu-wrap">
+        <button id="account-trigger" class="account-trigger">
+          <span id="account-email"></span>
+          <span class="account-caret">▾</span>
+        </button>
+        <div id="account-dropdown" class="account-dropdown" style="display:none;">
+          <div class="account-dropdown-row">
+            <span class="account-dropdown-label">Codice cantina</span>
+            <span id="account-cantina-code" class="account-cantina-code"></span>
+          </div>
+          <button id="account-edit-reviewers" class="account-dropdown-item">✎ Nomi votanti</button>
+          <button id="account-logout" class="account-dropdown-item account-logout">⎋ Esci</button>
+        </div>
+      </div>
+    </div>
+
     <header class="app-head">
       <p class="eyebrow">Cantina personale — registro d'assaggio</p>
       <div class="brand-row">
@@ -1159,7 +1240,6 @@ input:focus, select:focus, textarea:focus{
     </header>
 
     <div class="toolbar">
-      <button id="btn-edit-reviewers" class="btn-quiet">✎ Nomi votanti</button>
       <button class="btn-primary" id="btn-open-form">+ Aggiungi bottiglia</button>
       <button id="btn-seed" style="display:none;">Aggiungi i miei 11 vini</button>
     </div>
@@ -1175,10 +1255,7 @@ input:focus, select:focus, textarea:focus{
     ⚠️ Firebase non è ancora configurato. Apri il file HTML e compila <code>firebaseConfig</code> in cima allo script (istruzioni nei commenti) e attiva "Email/Password" in Firebase Authentication, altrimenti nulla verrà salvato.
   </div>
 
-  <div id="account-bar" class="account-bar" style="display:none;">
-    <span id="account-email"></span>
-    <button id="account-logout" class="btn-quiet">Esci</button>
-  </div>
+
 
   <div id="content">
     <div class="loading">Apertura del registro…</div>
@@ -1698,8 +1775,8 @@ function renderInventoryView(data){
           <div class="inv-qty-block">
             <span class="inv-qty ${zeroClass}">${qty === 0 ? 'Esaurita' : qty + ' bott.'}</span>
             <div class="inv-stepper">
-              <button type="button" class="inv-step-btn" data-action="inv-dec" data-wine="${w.id}" ${qty === 0 ? 'disabled' : ''}>−</button>
-              <button type="button" class="inv-step-btn" data-action="inv-inc" data-wine="${w.id}">+</button>
+              <button type="button" class="inv-step-btn" data-action="inv-dec" data-wine="${w.id}" aria-label="Bevuta una bottiglia" ${qty === 0 ? 'disabled' : ''}>−</button>
+              <button type="button" class="inv-step-btn" data-action="inv-inc" data-wine="${w.id}" aria-label="Aggiungi una bottiglia">+</button>
             </div>
           </div>
         </div>`;
@@ -1982,9 +2059,6 @@ function render(){
         Tutti<span class="tab-count">${counts['Tutti'] || 0}</span>
       </button>
       <div class="tab-row-right">
-        <button class="tab tab-ranking ${activeTab === 'Statistiche' ? 'tab-active' : ''}" data-tab="Statistiche">
-          📊 Statistiche
-        </button>
         <button class="tab tab-ranking ${activeTab === 'Abbinamento' ? 'tab-active' : ''}" data-tab="Abbinamento">
           🍽 Abbinamento
         </button>
@@ -1993,6 +2067,9 @@ function render(){
         </button>
         <button class="tab tab-ranking ${activeTab === 'Classifica' ? 'tab-active' : ''}" data-tab="Classifica">
           ★ Classifica<span class="tab-count">${counts['Classifica'] || 0}</span>
+        </button>
+        <button class="tab tab-ranking ${activeTab === 'Statistiche' ? 'tab-active' : ''}" data-tab="Statistiche">
+          📊 Statistiche
         </button>
       </div>
     </div>
@@ -2615,7 +2692,24 @@ ${text}
 }
 
 document.getElementById('btn-open-form').addEventListener('click', () => renderForm());
-document.getElementById('btn-edit-reviewers').addEventListener('click', () => renderReviewerSettings());
+document.getElementById('account-edit-reviewers').addEventListener('click', () => {
+  document.getElementById('account-dropdown').style.display = 'none';
+  renderReviewerSettings();
+});
+
+document.getElementById('account-trigger').addEventListener('click', (e) => {
+  e.stopPropagation();
+  const dropdown = document.getElementById('account-dropdown');
+  dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+});
+
+document.addEventListener('click', (e) => {
+  const wrap = document.querySelector('.account-menu-wrap');
+  const dropdown = document.getElementById('account-dropdown');
+  if(wrap && dropdown && !wrap.contains(e.target)){
+    dropdown.style.display = 'none';
+  }
+});
 
 function renderReviewerSettings(){
   const panel = document.getElementById('reviewer-settings-panel');
@@ -2732,6 +2826,7 @@ async function resolveCantinaAndStart(){
 
 function startApp(){
   document.getElementById('account-email').textContent = currentUser.email;
+  document.getElementById('account-cantina-code').textContent = currentCantinaId || '—';
   document.getElementById('account-bar').style.display = 'flex';
   loadWines();
 }
